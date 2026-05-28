@@ -14,3 +14,8 @@ class UserOut(BaseModel):
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+class Token(BaseModel):
+    """Схема для ответа с JWT токеном."""
+    access_token: str
+    token_type: str = "bearer"

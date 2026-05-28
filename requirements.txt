@@ -4,9 +4,9 @@ fastapi
 uvicorn
 pydantic
 pydantic-settings==2.2.1
+pydantic[email]==2.7.1
 psycopg2-binary
 asyncpg>=0.29.0
 bcrypt==4.1.2
-pydantic[email]==2.7.1
-pyjwt
+pyjwt==2.10.1
 httpx
