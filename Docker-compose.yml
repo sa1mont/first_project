@@ -12,6 +12,13 @@ services:
       - postgres_data:/var/lib/postgresql
 
 
+  redis:
+    image: redis:7-alpine
+    container_name: taskforge_redis
+    ports:
+      - "6379:6379"
+
+
   web:
     build: .
     ports:
@@ -23,6 +30,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     depends_on:
       - db
+      - redis
 
 volumes:
   postgres_data:

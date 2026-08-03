@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+import json
 
+from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import RoleChecker, get_current_user
 from app.core.database import get_db
-from app.api.deps import get_current_user, RoleChecker
-from app.models.user import User, UserRole
+from app.core.redis import redis_client
 from app.models.project import Project
+from app.models.user import User, UserRole
 from app.schemas.project import ProjectCreate, ProjectOut
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -25,6 +28,8 @@ async def create_project(
     db.add(new_project)
     await db.commit()
     await db.refresh(new_project)
+
+    await redis_client.delete("projects_list")
     return new_project
 
 @router.get("/", response_model=list[ProjectOut])
@@ -34,7 +39,23 @@ async def list_projects(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Получить список проектов с пагинацией."""
+    """Получить список проектов (с кэшированием в Redis)."""
+    cache_key = "projects_list"
+
+    cached_projects = await redis_client.get(cache_key)
+    if cached_projects:
+        return json.loads(cached_projects)
+
     result = await db.execute(select(Project).offset(skip).limit(limit))
     projects = result.scalars().all()
+
+    projects_json = [
+        {
+            "id": p.id, "title": p.title, "description": p.description,
+            "creator_id": p.creator_id, "created_at": p.created_at.isoformat()
+        } for p in projects
+    ]
+
+    await redis_client.set(cache_key, json.dumps(projects_json), ex=60)
+
     return projects

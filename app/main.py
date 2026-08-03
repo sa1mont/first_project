@@ -1,9 +1,23 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+
 from app.api.v1.auth import router as auth_router
 from app.api.v1.projects import router as project_router
 from app.api.v1.tasks import router as task_router
+from app.core.database import Base, engine
+from app.models.project import Project
+from app.models.task import Task
+from app.models.user import User
 
-app = FastAPI(title="TaskForge API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+app = FastAPI(title="TaskForge API", lifespan=lifespan)
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(project_router, prefix="/api/v1")

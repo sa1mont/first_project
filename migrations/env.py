@@ -1,15 +1,15 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from app.models.user import User
+
+from app.core.database import Base
 from app.models.project import Project
 from app.models.task import Task
-from app.core.database import Base
-
-from alembic import context
+from app.models.user import User
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -68,10 +68,15 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
+    import os
+
     from app.core.config import settings
 
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
+    
+    # ПРИОРИТЕТ: сначала проверяем явную переменную окружения, 
+    # если её нет — берем дефолтный settings.DATABASE_URL
+    configuration["sqlalchemy.url"] = os.environ.get("DATABASE_URL", settings.DATABASE_URL)
 
     connectable = async_engine_from_config(
         configuration,
@@ -83,6 +88,7 @@ async def run_async_migrations() -> None:
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()
+
 
 
 def run_migrations_online() -> None:
